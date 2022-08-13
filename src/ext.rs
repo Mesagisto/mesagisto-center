@@ -1,11 +1,15 @@
 use std::fmt::Debug;
+
 use color_eyre::eyre::ErrReport;
 
 pub trait EyreExt<E> {
   fn to_eyre(self) -> ErrReport;
 }
 
-impl<E> EyreExt<E> for E where  E: Into<ErrReport> + Debug + Sync + Send {
+impl<E> EyreExt<E> for E
+where
+  E: Into<ErrReport> + Debug + Sync + Send,
+{
   fn to_eyre(self) -> ErrReport {
     color_eyre::eyre::eyre!(self)
   }
@@ -16,7 +20,10 @@ pub trait ResultExt<T, E> {
   fn log(self) -> Option<T>;
   fn eyre_log(self) -> Option<T>;
 }
-impl<T, E> ResultExt<T, E> for Result<T, E> where E: Into<ErrReport> + Debug + Sync + Send {
+impl<T, E> ResultExt<T, E> for Result<T, E>
+where
+  E: Into<ErrReport> + Debug + Sync + Send,
+{
   #[inline]
   fn ignore(self) -> Option<T> {
     match self {
@@ -35,6 +42,7 @@ impl<T, E> ResultExt<T, E> for Result<T, E> where E: Into<ErrReport> + Debug + S
       }
     }
   }
+
   #[inline]
   fn eyre_log(self) -> Option<T> {
     match self {

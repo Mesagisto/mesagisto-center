@@ -40,46 +40,58 @@ pub struct Room {
 }
 
 impl Room {
-  pub async fn send(&self, conn_id: QuicOrWsConnId, pkt: Vec<u8>) {
+  pub async fn send(&self, sender_id: QuicOrWsConnId, pkt: Vec<u8>) {
     let pkt = Arc::new(pkt);
     let futs = FuturesUnordered::new();
 
     for member in &self.memebers {
-      let member_id = member.key();
+      let member_id = member.key().clone();
       let conn = member.value();
-      if member_id == &conn_id {
+      if member_id == sender_id {
         continue;
       }
       let pkt_clone = pkt.clone();
       match conn {
         Either::Left(conn) => {
-          trace!("send to quic {}", conn_id);
+          trace!("send to quic member {}", member_id);
           if let Ok(mut uni) = conn.open_uni().await {
             let fut = tokio::spawn(async move {
-              uni.write_all(&pkt_clone).await.log();
-              uni.finish().await.log();
+              // let op = async move {
+              //   uni.write_all(&pkt_clone).await.eyre_log();
+              //   uni.finish().await.eyre_log();
+              // };
+              // (member_id.clone(), tokio::time::timeout(std::time::Duration::from_secs(5), op).await)
+              uni.write_all(&pkt_clone).await.eyre_log();
+              uni.finish().await.eyre_log();
             });
             futs.push(fut);
           } else {
-            self.memebers.remove(member_id);
+            info!("removing member {}",member_id);
+            self.memebers.remove(&member_id);
           };
         }
         Either::Right(conn) => {
-          trace!("send to ws {}", conn_id);
+          trace!("send to ws member {}", member_id);
           match conn.try_send(tungstenite::Message::Binary(pkt.deref().to_owned())) {
             Ok(_) => {}
             Err(TrySendError::Full(msg)) => {
               // TODO add a switch
               warn!("slow receiver of ws conn");
-              conn.send(msg).await.log();
+              conn.send(msg).await.eyre_log();
             }
             Err(TrySendError::Closed(_)) => {
-              self.memebers.remove(&conn_id);
+              info!("removing member {}",member_id);
+              self.memebers.remove(&member_id);
             }
           };
         }
       }
     }
+    // let mut futs = join_all(futs).await.into_iter();
+    // while let Some(Ok((id,Err(_)))) = futs.next() {
+    //   info!("timeout when sending to {}",id);
+    //   self.memebers.remove(&id);
+    // }
     join_all(futs).await;
   }
 }

@@ -1,7 +1,7 @@
 pub mod quic;
 pub mod websocket;
 
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use color_eyre::eyre::Result;
 use either::Either;
@@ -10,13 +10,14 @@ use tokio_tungstenite::tungstenite;
 
 use crate::{
   data::{Ctl, Packet},
-  room::ROOMS,
+  room::ROOMS, ext::ResultExt,
 };
 
 pub type QuicOrWsConn = Either<quinn::Connection, Sender<tungstenite::Message>>;
 pub type QuicOrWsConnId = Either<usize, Arc<SocketAddr>>;
 
 pub use quic::quic;
+pub use websocket::wss;
 pub use websocket::ws;
 
 pub async fn receive_packets(
@@ -37,7 +38,7 @@ pub async fn receive_packets(
       }
     }
   } else {
-    ROOMS.send(pkt.room_id, conn_id, data).await;
+    tokio::time::timeout(Duration::from_secs(7), ROOMS.send(pkt.room_id, conn_id, data)).await.eyre_log();
   }
   Ok(())
 }
