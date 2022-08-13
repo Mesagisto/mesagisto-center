@@ -1,17 +1,27 @@
 #![feature(let_chains)]
 
+mod config;
 mod data;
 mod ext;
 mod log;
 mod room;
 pub mod server;
+
 mod tls;
 
-use std::{net::SocketAddr, sync::Arc, time::Duration};
-
+use std::net::SocketAddr;
 use color_eyre::eyre::Result;
-use quinn::TransportConfig;
+use config::Config;
 
+
+use crate::config::CONFIG;
+
+#[macro_use]
+extern crate educe;
+#[macro_use]
+extern crate automatic_config;
+// #[macro_use]
+// extern crate singleton;
 #[macro_use]
 extern crate tracing;
 
@@ -35,29 +45,30 @@ async fn run() -> Result<()> {
       .install()?;
   }
   log::init().await?;
+  Config::reload().await?;
+  if !CONFIG.enable {
+    warn!("MesagistoCenter is not enabled, about to exit the program.");
+    warn!("To enable, please modify the configuration file.");
+    return Ok(());
+  }
+  let certs = tls::read_certs_from_file().await?;
 
-  let certs = tls::read_certs_from_file()?;
-  let mut server_config = quinn::ServerConfig::with_single_cert(certs.0.to_owned(), certs.1)?;
-  let mut trans_config = TransportConfig::default();
-  trans_config.keep_alive_interval(Some(Duration::from_secs(5)));
-  server_config.transport = Arc::new(trans_config);
-  let mut cert_store = rustls::RootCertStore::empty();
-  for cert in certs.0 {
-    cert_store.add(&cert)?
+  server::quic(&certs).await?;
+
+  if CONFIG.tls.enable_for_ws {
+    server::wss(&certs).await?;
+  } else {
+    server::ws().await?;
   }
 
-  server::quic(server_config).await.unwrap();
-
-  tokio::spawn(async {
-    server::ws().await.unwrap();
-  });
+  info!("Start successfully");
   tokio::signal::ctrl_c().await?;
   Ok(())
 }
 
-fn server_addr() -> SocketAddr {
-  "127.0.0.1:6996".parse::<SocketAddr>().unwrap()
+fn quic_server_addr() -> SocketAddr {
+  CONFIG.server.quic.as_str().parse::<SocketAddr>().unwrap()
 }
 fn ws_server_addr() -> SocketAddr {
-  server_addr()
+  CONFIG.server.ws.as_str().parse::<SocketAddr>().unwrap()
 }
