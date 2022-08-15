@@ -44,6 +44,7 @@ impl Room {
     let pkt = Arc::new(pkt);
     let futs = FuturesUnordered::new();
 
+    let mut for_remove = vec![];
     for member in &self.memebers {
       let member_id = member.key().clone();
       let conn = member.value();
@@ -56,18 +57,13 @@ impl Room {
           trace!("send to quic member {}", member_id);
           if let Ok(mut uni) = conn.open_uni().await {
             let fut = tokio::spawn(async move {
-              // let op = async move {
-              //   uni.write_all(&pkt_clone).await.eyre_log();
-              //   uni.finish().await.eyre_log();
-              // };
-              // (member_id.clone(), tokio::time::timeout(std::time::Duration::from_secs(5), op).await)
               uni.write_all(&pkt_clone).await.eyre_log();
               uni.finish().await.eyre_log();
             });
             futs.push(fut);
           } else {
             info!("removing member {}",member_id);
-            self.memebers.remove(&member_id);
+            for_remove.push(member_id);
           };
         }
         Either::Right(conn) => {
@@ -81,17 +77,15 @@ impl Room {
             }
             Err(TrySendError::Closed(_)) => {
               info!("removing member {}",member_id);
-              self.memebers.remove(&member_id);
+              for_remove.push(member_id);
             }
           };
         }
       }
     }
-    // let mut futs = join_all(futs).await.into_iter();
-    // while let Some(Ok((id,Err(_)))) = futs.next() {
-    //   info!("timeout when sending to {}",id);
-    //   self.memebers.remove(&id);
-    // }
+    for remove in for_remove {
+      self.memebers.remove(&remove);
+    }
     join_all(futs).await;
   }
 }
