@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use color_eyre::eyre::Result;
 use futures_util::StreamExt;
-use quinn::{Endpoint, NewConnection, TransportConfig, IdleTimeout};
+use quinn::{Endpoint, NewConnection, TransportConfig, IdleTimeout, VarInt};
 use rustls::{Certificate, PrivateKey};
 
 use super::receive_packets;
@@ -15,8 +15,8 @@ pub async fn quic(certs: &(Vec<Certificate>, PrivateKey)) -> Result<()> {
   let mut server_config =
     quinn::ServerConfig::with_single_cert(certs.0.to_owned(), certs.1.to_owned())?;
   let mut trans_config = TransportConfig::default();
-  trans_config.keep_alive_interval(Some(Duration::from_secs(5)));
-  trans_config.max_idle_timeout(Some(IdleTimeout::try_from(Duration::from_secs(8))?));
+  trans_config.keep_alive_interval(Some(Duration::from_secs(10)));
+  trans_config.max_idle_timeout(Some(IdleTimeout::from(VarInt::from_u32(15_000))));
   server_config.transport = Arc::new(trans_config);
   let mut cert_store = rustls::RootCertStore::empty();
   for cert in &certs.0 {
