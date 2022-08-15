@@ -23,35 +23,31 @@ pub async fn wss(certs: &(Vec<Certificate>, PrivateKey)) -> Result<()> {
     .with_no_client_auth()
     .with_single_cert(certs.0.to_owned(), certs.1.to_owned())?;
   let acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(config));
-  tokio::spawn(async move {
-    let acceptor = acceptor;
-    while let Ok((stream, _)) = listener.accept().await {
-      let acceptor = acceptor.clone();
-      if let Some(peer_address) = stream.peer_addr().eyre_log()
-      && let Some(stream) = acceptor.accept(stream).await.eyre_log() {
-        tokio::spawn(async move {
-          accept_connection(stream, peer_address).await.log()
-        });
-      };
-    }
-    unimplemented!()
-  });
+  while let Some((stream, _)) = listener.accept().await.log() {
+    let acceptor = acceptor.clone();
+    if let Some(peer_address) = stream.peer_addr().log()
+    && let Some(stream) = acceptor.accept(stream).await.log() {
+      tokio::spawn(async move {
+        accept_connection(stream, peer_address).await.eyre_log();
+      });
+    };
+  }
+  info!("wss listening stopped");
   Ok(())
 }
 pub async fn ws() -> Result<()> {
   let listener = TcpListener::bind(&ws_server_addr()).await?;
-  tokio::spawn(async move {
-    while let Ok((stream, _)) = listener.accept().await {
-      if let Some(peer_address) = stream.peer_addr().eyre_log() {
-        tokio::spawn(async move {
-          accept_connection(stream, peer_address).await.log()
-        });
-      };
-    }
-    unimplemented!()
-  });
+  while let Some((stream, _)) = listener.accept().await.log() {
+    if let Some(peer_address) = stream.peer_addr().log() {
+      tokio::spawn(async move {
+        accept_connection(stream, peer_address).await.eyre_log();
+      });
+    };
+  }
+  info!("ws listening stopped");
   Ok(())
 }
+
 pub async fn accept_connection<S>(stream: S, peer_address: SocketAddr) -> Result<()>
 where
   S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -77,7 +73,7 @@ where
         Err(ws::Error::Protocol(ws::error::ProtocolError::ResetWithoutClosingHandshake)) | Err(ws::Error::Io(_)) => {
           break;
         }
-        Err(e) => error!("{:?}", e),
+        Err(e) => error!("{}", e.to_eyre()),
         Ok(_) => {}
       };
     }
@@ -97,11 +93,8 @@ where
           break;
         }
         Err(e) => error!("{:?}", e.to_eyre()),
-        Ok(ws::Message::Pong(_)) => {
-          debug!("pong from {}", conn_id);
-        }
+        Ok(ws::Message::Pong(_)) => { }
         Ok(ws::Message::Ping(ping)) => {
-          debug!("ping from {}", conn_id);
           tx.send(ws::Message::Pong(ping)).await.log();
         }
         Ok(ws::Message::Binary(data)) => {

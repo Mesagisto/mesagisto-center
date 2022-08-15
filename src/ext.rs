@@ -10,6 +10,7 @@ impl<E> EyreExt<E> for E
 where
   E: Into<ErrReport> + Debug + Sync + Send,
 {
+  #[inline(always)]
   fn to_eyre(self) -> ErrReport {
     color_eyre::eyre::eyre!(self)
   }
@@ -32,23 +33,23 @@ where
     }
   }
 
-  #[inline]
+  #[inline(always)]
   fn log(self) -> Option<T> {
     match self {
       Ok(v) => Some(v),
       Err(e) => {
-        error!("{:?}", e);
+        error!("{:?}", e.to_eyre());
         None
       }
     }
   }
 
-  #[inline]
+  #[inline(always)]
   fn eyre_log(self) -> Option<T> {
     match self {
       Ok(v) => Some(v),
       Err(e) => {
-        error!("{:?}", color_eyre::eyre::eyre!(e));
+        error!("{:?}", e);
         None
       }
     }

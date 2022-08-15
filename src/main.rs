@@ -14,7 +14,7 @@ use color_eyre::eyre::Result;
 use config::Config;
 
 
-use crate::config::CONFIG;
+use crate::{config::CONFIG, ext::ResultExt};
 
 #[macro_use]
 extern crate educe;
@@ -52,13 +52,19 @@ async fn run() -> Result<()> {
     return Ok(());
   }
   let certs = tls::read_certs_from_file().await?;
-
-  server::quic(&certs).await?;
-
-  if CONFIG.tls.enable_for_ws {
-    server::wss(&certs).await?;
+  let certs_clone = certs.clone();
+  tokio::spawn(async move {
+    server::quic(&certs_clone).await.eyre_log();
+  });
+  let certs_clone = certs;
+  if CONFIG.tls.wss {
+    tokio::spawn(async move{
+      server::wss(&certs_clone).await.eyre_log();
+    });
   } else {
-    server::ws().await?;
+    tokio::spawn(async move{
+      server::ws().await.eyre_log();
+    });
   }
 
   info!("Start successfully");

@@ -23,9 +23,7 @@ pub async fn quic(certs: &(Vec<Certificate>, PrivateKey)) -> Result<()> {
     cert_store.add(cert)?
   }
   let (_, incoming) = Endpoint::server(server_config, quic_server_addr())?;
-  tokio::spawn(async move {
-    handle_incoming(incoming).await.unwrap();
-  });
+  handle_incoming(incoming).await.unwrap();
   Ok(())
 }
 
@@ -53,5 +51,6 @@ pub async fn handle_incoming(mut incoming: quinn::Incoming) -> Result<()> {
       info!("quic connection close")
     });
   }
+  info!("quic listening stopped");
   Ok(())
 }

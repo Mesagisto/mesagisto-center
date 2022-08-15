@@ -14,8 +14,8 @@ pub struct Config {
 #[config_derive]
 pub struct TlsConfig {
   #[educe(Default = true)]
-  pub enable_for_ws: bool,
-  #[educe(Default = "/path/to/cert")]
+  pub wss: bool,
+  #[educe(Default = "/path/to/fullchain.cer")]
   pub cert: ArcStr,
   #[educe(Default = "/path/to/key")]
   pub key: String,
@@ -26,5 +26,5 @@ pub struct ServerConfig {
   #[educe(Default = "0.0.0.0:6996")]
   pub ws: ArcStr,
   #[educe(Default = "0.0.0.0:6996")]
-  pub quic: String,
+  pub quic: ArcStr,
 }
