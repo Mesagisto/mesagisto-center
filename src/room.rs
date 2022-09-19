@@ -2,7 +2,6 @@ use std::{ops::Deref, sync::Arc};
 
 use dashmap::DashMap;
 use either::Either;
-use futures_util::{future::join_all, stream::FuturesUnordered};
 use singleton::Singleton;
 use tokio::sync::mpsc::error::TrySendError;
 use tokio_tungstenite::tungstenite;
@@ -42,7 +41,6 @@ pub struct Room {
 impl Room {
   pub async fn send(&self, sender_id: QuicOrWsConnId, pkt: Vec<u8>) {
     let pkt = Arc::new(pkt);
-    let futs = FuturesUnordered::new();
 
     let mut for_remove = vec![];
     for member in &self.memebers {
@@ -51,18 +49,14 @@ impl Room {
       if member_id == sender_id {
         continue;
       }
-      let pkt_clone = pkt.clone();
       match conn {
         Either::Left(conn) => {
           trace!("send to quic member {}", member_id);
           if let Ok(mut uni) = conn.open_uni().await {
-            let fut = tokio::spawn(async move {
-              uni.write_all(&pkt_clone).await.eyre_log();
-              uni.finish().await.eyre_log();
-            });
-            futs.push(fut);
+            uni.write_all(&pkt).await.log();
+            uni.finish().await.log();
           } else {
-            info!("removing member {}",member_id);
+            info!("removing member {}", member_id);
             for_remove.push(member_id);
           };
         }
@@ -73,10 +67,10 @@ impl Room {
             Err(TrySendError::Full(msg)) => {
               // TODO add a switch
               warn!("slow receiver of ws conn");
-              conn.send(msg).await.eyre_log();
+              conn.send(msg).await.log();
             }
             Err(TrySendError::Closed(_)) => {
-              info!("removing member {}",member_id);
+              info!("removing member {}", member_id);
               for_remove.push(member_id);
             }
           };
@@ -86,6 +80,5 @@ impl Room {
     for remove in for_remove {
       self.memebers.remove(&remove);
     }
-    join_all(futs).await;
   }
 }
