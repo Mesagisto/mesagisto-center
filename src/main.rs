@@ -10,9 +10,9 @@ pub mod server;
 mod tls;
 
 use std::net::SocketAddr;
+
 use color_eyre::eyre::Result;
 use config::Config;
-
 
 use crate::{config::CONFIG, ext::ResultExt};
 
@@ -58,11 +58,11 @@ async fn run() -> Result<()> {
   });
   let certs_clone = certs;
   if CONFIG.tls.wss {
-    tokio::spawn(async move{
+    tokio::spawn(async move {
       server::wss(&certs_clone).await.eyre_log();
     });
   } else {
-    tokio::spawn(async move{
+    tokio::spawn(async move {
       server::ws().await.eyre_log();
     });
   }

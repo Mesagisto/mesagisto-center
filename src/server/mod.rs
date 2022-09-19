@@ -10,15 +10,15 @@ use tokio_tungstenite::tungstenite;
 
 use crate::{
   data::{Ctl, Packet},
-  room::ROOMS, ext::ResultExt,
+  ext::ResultExt,
+  room::ROOMS,
 };
 
 pub type QuicOrWsConn = Either<quinn::Connection, Sender<tungstenite::Message>>;
 pub type QuicOrWsConnId = Either<usize, Arc<SocketAddr>>;
 
 pub use quic::quic;
-pub use websocket::wss;
-pub use websocket::ws;
+pub use websocket::{ws, wss};
 
 pub async fn receive_packets(
   data: Vec<u8>,
@@ -38,7 +38,12 @@ pub async fn receive_packets(
       }
     }
   } else {
-    tokio::time::timeout(Duration::from_secs(7), ROOMS.send(pkt.room_id, conn_id, data)).await.eyre_log();
+    tokio::time::timeout(
+      Duration::from_secs(7),
+      ROOMS.send(pkt.room_id, conn_id, data),
+    )
+    .await
+    .eyre_log();
   }
   Ok(())
 }

@@ -27,9 +27,7 @@ pub async fn wss(certs: &(Vec<Certificate>, PrivateKey)) -> Result<()> {
     let acceptor = acceptor.clone();
     if let Some(peer_address) = stream.peer_addr().log()
     && let Some(stream) = acceptor.accept(stream).await.log() {
-      tokio::spawn(async move {
-        accept_connection(stream, peer_address).await.eyre_log();
-      });
+      accept_connection(stream, peer_address).await.eyre_log();
     };
   }
   info!("wss listening stopped");
@@ -39,9 +37,7 @@ pub async fn ws() -> Result<()> {
   let listener = TcpListener::bind(&ws_server_addr()).await?;
   while let Some((stream, _)) = listener.accept().await.log() {
     if let Some(peer_address) = stream.peer_addr().log() {
-      tokio::spawn(async move {
-        accept_connection(stream, peer_address).await.eyre_log();
-      });
+      accept_connection(stream, peer_address).await.eyre_log();
     };
   }
   info!("ws listening stopped");
@@ -70,14 +66,15 @@ where
         Err(ws::Error::ConnectionClosed) | Err(ws::Error::AlreadyClosed) => {
           break;
         }
-        Err(ws::Error::Protocol(ws::error::ProtocolError::ResetWithoutClosingHandshake)) | Err(ws::Error::Io(_)) => {
+        Err(ws::Error::Protocol(ws::error::ProtocolError::ResetWithoutClosingHandshake))
+        | Err(ws::Error::Io(_)) => {
           break;
         }
         Err(e) => error!("{}", e.to_eyre()),
         Ok(_) => {}
       };
     }
-    info!("ws disconnected {}",conn_id_clone);
+    info!("ws disconnected {}", conn_id_clone);
     rx.close();
   });
   tokio::spawn(async move {
@@ -89,11 +86,12 @@ where
         Err(ws::Error::ConnectionClosed) | Err(ws::Error::AlreadyClosed) => {
           break;
         }
-        Err(ws::Error::Protocol(ws::error::ProtocolError::ResetWithoutClosingHandshake)) | Err(ws::Error::Io(_)) => {
+        Err(ws::Error::Protocol(ws::error::ProtocolError::ResetWithoutClosingHandshake))
+        | Err(ws::Error::Io(_)) => {
           break;
         }
         Err(e) => error!("{:?}", e.to_eyre()),
-        Ok(ws::Message::Pong(_)) => { }
+        Ok(ws::Message::Pong(_)) => {}
         Ok(ws::Message::Ping(ping)) => {
           tx.send(ws::Message::Pong(ping)).await.log();
         }
@@ -105,7 +103,7 @@ where
         Ok(msg) => warn!("unexpected message {}", msg),
       }
     }
-    info!("ws disconnected {}",conn_id)
+    info!("ws disconnected {}", conn_id)
   });
   Ok(())
 }

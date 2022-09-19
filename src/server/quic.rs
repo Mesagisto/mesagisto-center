@@ -2,7 +2,7 @@ use std::{sync::Arc, time::Duration};
 
 use color_eyre::eyre::Result;
 use futures_util::StreamExt;
-use quinn::{Endpoint, NewConnection, TransportConfig, IdleTimeout, VarInt};
+use quinn::{Endpoint, IdleTimeout, NewConnection, TransportConfig, VarInt};
 use rustls::{Certificate, PrivateKey};
 
 use super::receive_packets;
@@ -37,7 +37,7 @@ pub async fn handle_incoming(mut incoming: quinn::Incoming) -> Result<()> {
       }
     };
     let conn = nconn.connection;
-
+    info!("New QUIC connection {}", conn.stable_id());
     tokio::spawn(async move {
       while let Some(Ok(recv)) = nconn.uni_streams.next().await {
         let conn_clone = conn.clone();
