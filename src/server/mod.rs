@@ -1,10 +1,8 @@
-pub mod quic;
 pub mod websocket;
 
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use color_eyre::eyre::Result;
-use either::Either;
 use tokio::sync::mpsc::Sender;
 use tokio_tungstenite::tungstenite;
 
@@ -14,16 +12,15 @@ use crate::{
   room::ROOMS,
 };
 
-pub type QuicOrWsConn = Either<quinn::Connection, Sender<tungstenite::Message>>;
-pub type QuicOrWsConnId = Either<usize, Arc<SocketAddr>>;
+pub type WsConn = Sender<tungstenite::Message>;
+pub type WsConnId = Arc<SocketAddr>;
 
-pub use quic::quic;
 pub use websocket::{ws, wss};
 
 pub async fn receive_packets(
   data: Vec<u8>,
-  conn: QuicOrWsConn,
-  conn_id: QuicOrWsConnId,
+  conn: Sender<tungstenite::Message>,
+  conn_id: Arc<SocketAddr>,
 ) -> Result<()> {
   let pkt: Packet = ciborium::de::from_reader(&*data)?;
   #[cfg(debug_assertions)]

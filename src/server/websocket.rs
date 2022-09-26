@@ -11,7 +11,7 @@ use tokio::{
 use tokio_tungstenite::tungstenite as ws;
 
 use crate::{
-  ext::{EitherExt, EyreExt, ResultExt},
+  ext::{EyreExt, ResultExt},
   server::receive_packets,
   ws_server_addr,
 };
@@ -55,7 +55,7 @@ where
 
   let conn_id = Arc::new(peer_address);
 
-  let (tx, mut rx) = mpsc::channel(64);
+  let (tx, mut rx) = mpsc::channel(128);
   let (write, mut read) = ws_stream.split();
 
   let conn_id_clone = conn_id.clone();
@@ -91,13 +91,9 @@ where
           break;
         }
         Err(e) => error!("{:?}", e.to_eyre()),
-        Ok(ws::Message::Pong(_)) => {}
-        Ok(ws::Message::Ping(ping)) => {
-          tx.send(ws::Message::Pong(ping)).await.log();
-        }
         Ok(ws::Message::Binary(data)) => {
           tokio::spawn(async move {
-            receive_packets(data, tx.tr(), conn_id.tr()).await.log();
+            receive_packets(data, tx, conn_id).await.log();
           });
         }
         Ok(msg) => warn!("unexpected message {}", msg),

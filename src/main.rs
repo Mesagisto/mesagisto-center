@@ -25,7 +25,7 @@ extern crate automatic_config;
 #[macro_use]
 extern crate tracing;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {
   run().await?;
   Ok(())
@@ -51,15 +51,11 @@ async fn run() -> Result<()> {
     warn!("To enable, please modify the configuration file.");
     return Ok(());
   }
-  let certs = tls::read_certs_from_file().await?;
-  let certs_clone = certs.clone();
-  tokio::spawn(async move {
-    server::quic(&certs_clone).await.eyre_log();
-  });
-  let certs_clone = certs;
-  if CONFIG.tls.wss {
+
+  if CONFIG.tls.enable {
+    let certs = tls::read_certs_from_file().await?;
     tokio::spawn(async move {
-      server::wss(&certs_clone).await.eyre_log();
+      server::wss(&certs).await.eyre_log();
     });
   } else {
     tokio::spawn(async move {
@@ -72,9 +68,6 @@ async fn run() -> Result<()> {
   Ok(())
 }
 
-fn quic_server_addr() -> SocketAddr {
-  CONFIG.server.quic.as_str().parse::<SocketAddr>().unwrap()
-}
 fn ws_server_addr() -> SocketAddr {
-  CONFIG.server.ws.as_str().parse::<SocketAddr>().unwrap()
+  CONFIG.server.address.as_str().parse::<SocketAddr>().unwrap()
 }
