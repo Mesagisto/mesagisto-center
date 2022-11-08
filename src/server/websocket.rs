@@ -96,6 +96,9 @@ where
             receive_packets(data, tx, conn_id).await.log();
           });
         }
+        Ok(ws::Message::Ping(data)) => {
+          tx.send(ws::Message::Pong(data)).await.log();
+        }
         Ok(msg) => warn!("unexpected message {}", msg),
       }
     }
