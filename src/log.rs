@@ -7,8 +7,7 @@ use tracing_subscriber::{layer::SubscriberExt, prelude::*};
 pub(crate) async fn init() -> Result<()> {
   let mut filter = tracing_subscriber::filter::Targets::new()
     .with_target("mesagisto_center", Level::TRACE)
-    .with_target("quinn", Level::INFO)
-    .with_target("tokio-tungstenite", Level::INFO)
+    .with_target("tokio_tungstenite", Level::INFO)
     .with_default(Level::WARN);
 
   if cfg!(feature = "tokio-console") {
@@ -22,8 +21,15 @@ pub(crate) async fn init() -> Result<()> {
     tracing_subscriber::fmt::layer()
       .with_target(true)
       .with_timer(tracing_subscriber::fmt::time::OffsetTime::new(
-        time::UtcOffset::from_whole_seconds(Local.timestamp(0, 0).offset().fix().local_minus_utc())
-          .unwrap_or(time::UtcOffset::UTC),
+        time::UtcOffset::from_whole_seconds(
+          Local
+            .timestamp_opt(0, 0)
+            .unwrap()
+            .offset()
+            .fix()
+            .local_minus_utc(),
+        )
+        .unwrap_or(time::UtcOffset::UTC),
         time::macros::format_description!(
           "[year repr:last_two]-[month]-[day] [hour]:[minute]:[second]"
         ),

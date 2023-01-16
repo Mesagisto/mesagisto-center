@@ -69,5 +69,10 @@ async fn run() -> Result<()> {
 }
 
 fn ws_server_addr() -> SocketAddr {
-  CONFIG.server.address.as_str().parse::<SocketAddr>().unwrap()
+  CONFIG
+    .server
+    .address
+    .as_str()
+    .parse::<SocketAddr>()
+    .unwrap()
 }
