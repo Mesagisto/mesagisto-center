@@ -13,14 +13,14 @@ use crate::{
 };
 
 pub type WsConn = Sender<tungstenite::Message>;
-pub type WsConnId = Arc<SocketAddr>;
+pub type WsConnId = u16;
 
 pub use websocket::{ws, wss};
 
 pub async fn receive_packets(
   data: Vec<u8>,
   conn: Sender<tungstenite::Message>,
-  conn_id: Arc<SocketAddr>,
+  conn_id: u16,
 ) -> Result<()> {
   let pkt: Packet = ciborium::de::from_reader(&*data)?;
   #[cfg(debug_assertions)]
